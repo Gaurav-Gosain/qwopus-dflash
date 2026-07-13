@@ -1,10 +1,10 @@
 # qwopus-dflash
 
-2.5x faster code generation from [Qwopus3.5-9B-Coder](https://huggingface.co/Jackrong/Qwopus3.5-9B-Coder) on an RTX 3070, same outputs. DFlash block-diffusion speculative decoding on upstream llama.cpp.
+Up to 4.9x faster code generation from [Qwopus3.5-9B-Coder](https://huggingface.co/Jackrong/Qwopus3.5-9B-Coder) on an RTX 3070, same outputs. DFlash block-diffusion speculative decoding on upstream llama.cpp.
 
-![side by side: baseline vs dflash generating the same code](demo.gif)
+![side by side: baseline vs dflash applying the same edit to a Go file](demo.gif)
 
-58 to 145 tok/s. Both panes are real captured token streams: same model, same prompt, temperature 0. The right pane just has a DFlash draft attached.
+62 to 304 tok/s renaming a struct field across a Go file. Both panes are real captured token streams: same model, same prompt, temperature 0. The right pane just has a DFlash draft attached.
 
 **Draft GGUFs: [GauravGosain/Qwopus3.5-9B-Coder-DFlash-GGUF](https://huggingface.co/GauravGosain/Qwopus3.5-9B-Coder-DFlash-GGUF)**
 
@@ -33,12 +33,12 @@ The fix is cheap because of how DFlash works in llama.cpp: the draft GGUF carrie
 
 RTX 3070 8 GB, target Qwopus3.5-9B-Coder Q3_K_M, draft Q4_K_M, 600-token coding generation at temperature 0, llama.cpp master (4193ea697), measured back to back with both configurations fully on GPU.
 
-| config | speed | acceptance |
-| --- | --- | --- |
-| no speculation | 58 tok/s | - |
-| DFlash, n-max 15 | 145 tok/s | 0.34 |
+| workload | baseline | DFlash | speedup | acceptance |
+| --- | --- | --- | --- | --- |
+| code editing (rename a field, echo the file) | 62 tok/s | 304 tok/s | 4.9x | 0.84 |
+| fresh code generation | 58 tok/s | 145 tok/s | 2.5x | 0.34 |
 
-Shorter blocks raise acceptance but lower throughput (n-max 7: 0.56 acceptance, slower overall). Draft quantization barely matters (Q8_0 within noise of Q4_K_M) so the smaller Q4_K_M is the default. Acceptance falls to about 0.15 on freeform prose, still a clear net win.
+The speedup tracks how predictable the output is. Editing existing code is DFlash's best case: mean draft length hits 13.7 of 15, so most blocks verify in one pass. Fresh generation still runs 2.5x. Freeform prose drops to about 0.15 acceptance, still a net win. Shorter blocks raise acceptance but lower throughput (n-max 7: 0.56 acceptance, slower overall). Draft quantization barely matters (Q8_0 within noise of Q4_K_M) so the smaller Q4_K_M is the default.
 
 Caveat: this needs about 6.5 GB of free VRAM and a low `--fit-target` margin (run.sh uses `-fitt 256`; the default 1024 reserves too much and spills layers). If other processes hold VRAM, llama-server spills target layers to CPU and speculation goes net-negative: measured 28 tok/s against a 58 tok/s baseline with the GPU shared. Do not pin `-ngl`; the automatic fit degrades gracefully instead of failing to start.
 
