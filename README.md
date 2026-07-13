@@ -15,9 +15,9 @@ The fix is cheap because of how DFlash works in llama.cpp: the draft GGUF carrie
 
 ## Demo
 
-https://github.com/Gaurav-Gosain/qwopus-dflash/raw/main/demo.mp4
+![side by side demo](demo.gif)
 
-Side by side replay of two real captured token streams, same prompt, temperature 0: baseline on the left, DFlash on the right. Rendered from the stream timestamps, so the typing speed is exactly what the server produced.
+Side by side replay of two real captured token streams, same prompt, temperature 0: baseline on the left, DFlash on the right. Rendered from the stream timestamps, so the typing speed is exactly what the server produced. Higher quality: [demo.mp4](demo.mp4).
 
 ## Benchmarks
 
