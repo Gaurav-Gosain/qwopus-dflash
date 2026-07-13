@@ -13,6 +13,12 @@ No DFlash draft exists for Qwopus, only for its base model ([z-lab/Qwen3.5-9B-DF
 
 The fix is cheap because of how DFlash works in llama.cpp: the draft GGUF carries no token embeddings and no lm_head, it borrows the target model's copies at runtime. Converting a Qwopus-matched draft therefore needs only the Qwopus tokenizer, not its 18 GB of weights, and the resulting draft matches the target embeddings exactly by construction.
 
+## Demo
+
+https://github.com/Gaurav-Gosain/qwopus-dflash/raw/main/demo.mp4
+
+Side by side replay of two real captured token streams, same prompt, temperature 0: baseline on the left, DFlash on the right. Rendered from the stream timestamps, so the typing speed is exactly what the server produced.
+
 ## Benchmarks
 
 RTX 3070 8 GB, target Qwopus3.5-9B-Coder Q3_K_M, draft Q4_K_M, 600-token coding generation at temperature 0, llama.cpp master (4193ea697), measured back to back with both configurations fully on GPU.
