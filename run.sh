@@ -4,12 +4,11 @@
 # Draft: z-lab/Qwen3.5-9B-DFlash converted against the Qwopus tokenizer (see convert-draft.sh)
 #        The draft GGUF has no embeddings/lm_head; it shares the target's at runtime.
 #
-# Measured on 600-token coding generations, temp 0, target Q3_K_M fully on GPU:
-#   no speculation:        38 tok/s
-#   DFlash n-max 7:        81 tok/s (acceptance 0.56)
-#   DFlash n-max 15:      127 tok/s (acceptance 0.34, mean draft len 6.1)
+# Measured back to back on 600-token coding generations, temp 0, both fully on GPU:
+#   no speculation:        58 tok/s
+#   DFlash n-max 15:      145 tok/s (acceptance 0.34, mean draft len 6.1)
 # Needs ~6.5 GB free VRAM. If other processes hold VRAM the server spills target
-# layers to CPU and speculation becomes a net loss; free VRAM first.
+# layers to CPU and speculation goes net-negative (measured 28 tok/s); free VRAM first.
 set -euo pipefail
 
 LCPP="${LCPP:-$HOME/dev/llama.cpp}"
@@ -35,6 +34,6 @@ exec "$LCPP/build/bin/llama-server" \
   -m "$MODEL" \
   -md "$DRAFT" \
   --spec-type draft-dflash --spec-draft-n-max 15 \
-  -np 1 -ctxcp 2 \
+  -np 1 -ctxcp 2 -fitt 256 \
   -fa on --jinja -c "$CTX" -b 512 -ub 256 -ctk q8_0 -ctv q8_0 \
   --host 127.0.0.1 --port "$PORT" "$@"
