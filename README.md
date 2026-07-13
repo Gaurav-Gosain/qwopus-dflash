@@ -52,10 +52,10 @@ The same pairing works on Macs via [dflash-mlx](https://github.com/bstnxbt/dflas
 
 | workload | baseline | DFlash | speedup | acceptance |
 | --- | --- | --- | --- | --- |
-| code editing | 28.1 tok/s | 52.4 tok/s | 1.87x | 0.76 |
-| fresh code generation | 28.2 tok/s | 41.1 tok/s | 1.46x | 0.69 |
+| code editing | 28.3 tok/s | 55.3 tok/s | 1.95x | 0.83 |
+| fresh code generation | 28.4 tok/s | 42.3 tok/s | 1.49x | 0.66 |
 
-The 4-bit 9B decodes at the unified-memory bandwidth roofline (about 29 tok/s on 150 GB/s), so speculative verification is the only way past it. The smaller multiplier versus CUDA is expected: batch-16 verification is not close to free on a laptop GPU. Quantize the draft (`--draft-quant w4`); the bf16 draft costs more bandwidth than its extra acceptance is worth, and peak memory drops from 7.9 to 6.1 GB.
+The 4-bit 9B decodes at the unified-memory bandwidth roofline (about 29 tok/s on 150 GB/s measured), so speculative verification is the only way past it. The smaller multiplier versus CUDA is hardware: a batch-16 verify pass costs 3.8x a single-token step on the M3 Pro versus roughly 1.05x on a 3070, which caps any implementation near 3.5x. Two tuning results that matter: quantize the draft (`--draft-quant w4`, the bf16 draft costs more bandwidth than its extra acceptance is worth, and peak memory drops from 7.9 to 6.1 GB) and cap verify blocks at 8 (`--block-tokens 8`, verification cost grows super-linearly on the hybrid-attention kernels, so shorter blocks net more).
 
 Setup and serve: [`mlx/serve.sh`](mlx/serve.sh). One wrinkle: z-lab's draft config uses transformers-v5 nested keys that dflash-mlx does not read yet; [`mlx/patch-draft-config.py`](mlx/patch-draft-config.py) downloads the draft and flattens `rope_theta` and `block_size`.
 
