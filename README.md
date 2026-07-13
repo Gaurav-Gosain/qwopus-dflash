@@ -46,6 +46,19 @@ Caveat: this needs about 6.5 GB of free VRAM and a low `--fit-target` margin (ru
 
 `Q4=1 ./run.sh` serves the Q4_K_M target instead of Q3_K_M (better quality, some CPU spill on 8 GB).
 
+## Apple Silicon (MLX)
+
+The same pairing works on Macs via [dflash-mlx](https://github.com/bstnxbt/dflash-mlx). Measured on an M3 Pro 18 GB with `snsnc/Qwopus3.5-9B-Coder-MLX-4bit` as target:
+
+| workload | baseline | DFlash | speedup | acceptance |
+| --- | --- | --- | --- | --- |
+| code editing | 28.1 tok/s | 52.4 tok/s | 1.87x | 0.76 |
+| fresh code generation | 28.2 tok/s | 41.1 tok/s | 1.46x | 0.69 |
+
+The 4-bit 9B decodes at the unified-memory bandwidth roofline (about 29 tok/s on 150 GB/s), so speculative verification is the only way past it. The smaller multiplier versus CUDA is expected: batch-16 verification is not close to free on a laptop GPU. Quantize the draft (`--draft-quant w4`); the bf16 draft costs more bandwidth than its extra acceptance is worth, and peak memory drops from 7.9 to 6.1 GB.
+
+Setup and serve: [`mlx/serve.sh`](mlx/serve.sh). One wrinkle: z-lab's draft config uses transformers-v5 nested keys that dflash-mlx does not read yet; [`mlx/patch-draft-config.py`](mlx/patch-draft-config.py) downloads the draft and flattens `rope_theta` and `block_size`.
+
 ## Notes and gotchas
 
 - Qwopus ships a transformers v5 `tokenizer_config.json` (`tokenizer_class: TokenizersBackend`) that transformers v4 refuses to load. The conversion script rewrites it to `PreTrainedTokenizerFast`; the tokenizer.json itself is a standard fast tokenizer.
