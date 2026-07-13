@@ -1,8 +1,24 @@
 # qwopus-dflash
 
-DFlash speculative decoding for [Qwopus3.5-9B-Coder](https://huggingface.co/Jackrong/Qwopus3.5-9B-Coder) on upstream llama.cpp. 2.5x faster code generation on an RTX 3070 (8 GB).
+2.5x faster code generation from [Qwopus3.5-9B-Coder](https://huggingface.co/Jackrong/Qwopus3.5-9B-Coder) on an RTX 3070, same outputs. DFlash block-diffusion speculative decoding on upstream llama.cpp.
 
-[DFlash](https://github.com/z-lab/dflash) is block-diffusion drafting: the draft model proposes an entire block of tokens in one forward pass, conditioned on hidden states extracted from the target model. Support landed in llama.cpp master in [#22105](https://github.com/ggml-org/llama.cpp/pull/22105) as `--spec-type draft-dflash`.
+![side by side: baseline vs dflash generating the same code](demo.gif)
+
+58 to 145 tok/s. Both panes are real captured token streams: same model, same prompt, temperature 0. The right pane just has a DFlash draft attached.
+
+**Draft GGUFs: [GauravGosain/Qwopus3.5-9B-Coder-DFlash-GGUF](https://huggingface.co/GauravGosain/Qwopus3.5-9B-Coder-DFlash-GGUF)**
+
+## Quick start
+
+```sh
+llama-server \
+  -m Qwopus3.5-9B-coder-Exp-Q3_K_M.gguf \
+  -md Qwopus3.5-9B-Coder-DFlash-Q4_K_M.gguf \
+  --spec-type draft-dflash --spec-draft-n-max 15 \
+  -fa on --jinja -ctxcp 2 -fitt 256
+```
+
+Needs llama.cpp master (DFlash landed in [#22105](https://github.com/ggml-org/llama.cpp/pull/22105)). Or clone this repo: `./convert-draft.sh` builds the draft from scratch, `./run.sh` serves it.
 
 ## Why this repo
 
@@ -12,12 +28,6 @@ No DFlash draft exists for Qwopus, only for its base model ([z-lab/Qwen3.5-9B-DF
 - Some published conversions target a llama.cpp fork rather than upstream.
 
 The fix is cheap because of how DFlash works in llama.cpp: the draft GGUF carries no token embeddings and no lm_head, it borrows the target model's copies at runtime. Converting a Qwopus-matched draft therefore needs only the Qwopus tokenizer, not its 18 GB of weights, and the resulting draft matches the target embeddings exactly by construction.
-
-## Demo
-
-![side by side demo](demo.gif)
-
-Side by side replay of two real captured token streams, same prompt, temperature 0: baseline on the left, DFlash on the right. Rendered from the stream timestamps, so the typing speed is exactly what the server produced. Higher quality: [demo.mp4](demo.mp4).
 
 ## Benchmarks
 
@@ -32,14 +42,7 @@ Shorter blocks raise acceptance but lower throughput (n-max 7: 0.56 acceptance, 
 
 Caveat: this needs about 6.5 GB of free VRAM and a low `--fit-target` margin (run.sh uses `-fitt 256`; the default 1024 reserves too much and spills layers). If other processes hold VRAM, llama-server spills target layers to CPU and speculation goes net-negative: measured 28 tok/s against a 58 tok/s baseline with the GPU shared. Do not pin `-ngl`; the automatic fit degrades gracefully instead of failing to start.
 
-## Usage
-
-Build llama.cpp master with CUDA, then:
-
-```sh
-./convert-draft.sh   # downloads draft + Qwopus tokenizer, converts, quantizes
-./run.sh             # llama-server on :8080 with draft-dflash
-```
+## Modes
 
 `Q4=1 ./run.sh` serves the Q4_K_M target instead of Q3_K_M (better quality, some CPU spill on 8 GB).
 
