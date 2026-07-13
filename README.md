@@ -12,13 +12,16 @@ Up to 4.9x faster code generation from [Qwopus3.5-9B-Coder](https://huggingface.
 
 ```sh
 llama-server \
-  -m Qwopus3.5-9B-coder-Exp-Q3_K_M.gguf \
-  -md Qwopus3.5-9B-Coder-DFlash-Q4_K_M.gguf \
+  -hf Jackrong/Qwopus3.5-9B-Coder-GGUF:Q3_K_M \
+  -hfd GauravGosain/Qwopus3.5-9B-Coder-DFlash-GGUF:Q4_K_M \
+  --no-mmproj \
   --spec-type draft-dflash --spec-draft-n-max 15 \
-  -fa on --jinja -ctxcp 2 -fitt 256
+  -fa on --jinja -c 4096 -ctk q8_0 -ctv q8_0 -ctxcp 2 -fitt 256
 ```
 
-Needs llama.cpp master (DFlash landed in [#22105](https://github.com/ggml-org/llama.cpp/pull/22105)). Or clone this repo: `./convert-draft.sh` builds the draft from scratch, `./run.sh` serves it.
+Downloads both models from Hugging Face on first run. Needs llama.cpp master (DFlash landed in [#22105](https://github.com/ggml-org/llama.cpp/pull/22105)). Or clone this repo: `./convert-draft.sh` builds the draft from scratch, `./run.sh` serves it from local files.
+
+Three things learned the hard way: pass `-hf` and `-hfd` together (a local `-m` combined with `-hfd` currently fails to resolve the draft path); keep `--no-mmproj` (the target repo ships a 921 MB vision projector you do not need); and know that the automatic VRAM fit cannot pre-measure a DFlash draft, so with barely-enough VRAM it fails to start instead of spilling layers. Set `-ngl` yourself in that case.
 
 ## Why this repo
 
